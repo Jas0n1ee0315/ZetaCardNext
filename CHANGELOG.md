@@ -4,6 +4,23 @@ All notable changes to ZetaCard are documented in this file. The format is based
 
 ## [Unreleased]
 
+## [1.5.1-next] - ZetaCardNext
+
+Unofficial modified version based on ZetaCard 1.5 by hxfuxyy.
+
+### Fixed
+
+- Cards were never discovered on Google Wallet 26.43.1009867093, so the app kept showing *No cards found yet*. Discovery now hooks every constructor of the card state class and reads the artwork after construction.
+
+### Added
+
+- A **強制大卡片首頁** (force big-card home) toggle in the ⋮ menu. It shows the large card carousel home screen on Osaifu-Keitai / Japanese devices, where Wallet otherwise shows a compact list. It is off by default and applies after Wallet restarts.
+- The About dialog states that this is a modified version based on ZetaCard by hxfuxyy.
+
+### Removed
+
+- The workflow that published releases to the Xposed Modules Repository under the original module name.
+
 ## [1.5]
 
 ### Fixed

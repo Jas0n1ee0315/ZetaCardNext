@@ -2,18 +2,31 @@
 
 <img src="docs/assets/icon.png" alt="ZetaCard icon" width="112" height="112">
 
-# ZetaCard
+# ZetaCardNext
 
 Customize Google Wallet card artwork with a modern Material 3 LSPosed module for Android.
 
-[![CI](https://github.com/hxfuxyy/ZetaCard/actions/workflows/ci.yml/badge.svg)](https://github.com/hxfuxyy/ZetaCard/actions/workflows/ci.yml)
-[![Latest release](https://img.shields.io/github/v/release/hxfuxyy/ZetaCard?label=release)](https://github.com/hxfuxyy/ZetaCard/releases/latest)
+[![Latest release](https://img.shields.io/github/v/release/Jas0n1ee0315/ZetaCardNext?label=release)](https://github.com/Jas0n1ee0315/ZetaCardNext/releases/latest)
 [![Android 10+](https://img.shields.io/badge/Android-10%2B-3DDC84?logo=android&logoColor=white)](#requirements)
 [![License](https://img.shields.io/badge/license-ZetaCard%20Source%20License%202.0-blue)](LICENSE)
 
-**[Download the latest release](https://github.com/hxfuxyy/ZetaCard/releases/latest)**
+**[Download the latest release](https://github.com/Jas0n1ee0315/ZetaCardNext/releases/latest)**
 
 </div>
+
+> [!IMPORTANT]
+> **ZetaCardNext is based on [ZetaCard](https://github.com/hxfuxyy/ZetaCard) by hxfuxyy.**
+> It is an unofficial, modified version. It is not an official ZetaCard release and is not endorsed by hxfuxyy.
+> The changes below were made by Jas0n1ee0315. All other credit goes to the original author.
+
+## Changes in ZetaCardNext
+
+- **Card discovery fix.** In newer Google Wallet builds (tested on 26.43.1009867093), the app kept showing *No cards found yet* because the card state object was never created through the constructor that ZetaCard hooked. ZetaCardNext hooks every constructor of the card state class and reads the artwork after the constructor finishes.
+- **"Force big-card home" toggle (強制大卡片首頁).** On phones with Osaifu-Keitai (`com.felicanetworks.mfc`) or a Japanese device country, Google Wallet shows a compact list home screen instead of the large card carousel. A new item in the ⋮ menu forces the carousel home screen by overriding two Wallet server flags (`45805255`, `45777533`). The toggle writes an LSPosed remote preference and force-stops Wallet; the change applies the next time Wallet opens. The override only applies to Wallet versions listed in [`HomeLayoutOverride`](app/src/main/java/io/github/hxfuxyy/zetacard/wallet/HomeLayoutOverride.java) and is skipped on any other version.
+- The package name stays `io.github.hxfuxyy.zetacard`, so ZetaCardNext installs over ZetaCard. Because it is signed with a different key, uninstall the official ZetaCard first.
+- The workflow that published to the Xposed Modules Repository under the original module name was removed.
+
+Custom artwork still only appears on the Wallet home screen. The card detail pages are drawn by Google Play services, which this module does not hook.
 
 ZetaCard is an LSPosed module that replaces the artwork of your payment cards inside Google Wallet with images you choose. Its manager app shows the original artwork next to your design, lets you crop or stretch a photo to the card shape, and restores the original look with one tap.
 

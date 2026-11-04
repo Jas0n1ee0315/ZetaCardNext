@@ -40,6 +40,11 @@ public final class ZetaApplication extends Application implements XposedServiceH
         return service != null;
     }
 
+    /** [ZetaCardNext] 首頁樣式開關需要寫入 LSPosed 遠端設定；未連線時回傳 null */
+    public static XposedService currentService() {
+        return service;
+    }
+
     public static boolean syncArt(Application context, String id) {
         return ArtSync.sync(service, context, id);
     }

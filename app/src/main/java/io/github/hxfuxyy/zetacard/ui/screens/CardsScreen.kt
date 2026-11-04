@@ -19,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.BugReport
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.MoreVert
+import androidx.compose.material.icons.outlined.ViewCarousel
 import androidx.compose.material.icons.outlined.Wallet
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -48,6 +49,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -57,6 +59,7 @@ import io.github.hxfuxyy.zetacard.R
 import io.github.hxfuxyy.zetacard.core.CardLabels
 import io.github.hxfuxyy.zetacard.core.CropGeometry
 import io.github.hxfuxyy.zetacard.data.CardItem
+import io.github.hxfuxyy.zetacard.ui.HomeLayoutToggle
 import io.github.hxfuxyy.zetacard.ui.LegacyNotice
 import io.github.hxfuxyy.zetacard.ui.UiState
 import io.github.hxfuxyy.zetacard.ui.components.Artwork
@@ -167,6 +170,7 @@ fun CardsScreen(state: UiState, versionLabel: String, actions: CardsActions) {
 private fun OverflowMenu(versionLabel: String, actions: CardsActions) {
     var open by remember { mutableStateOf(false) }
     var about by remember { mutableStateOf(false) }
+    val context = LocalContext.current.applicationContext
     Box {
         IconButton(onClick = { open = true }) { Icon(Icons.Outlined.MoreVert, contentDescription = "More options") }
         DropdownMenu(
@@ -191,6 +195,16 @@ private fun OverflowMenu(versionLabel: String, actions: CardsActions) {
                     about = true
                 },
             )
+            // [ZetaCardNext] 強制大卡片首頁開關；每次打開選單時重新讀取目前狀態
+            val bigCards = remember(open) { HomeLayoutToggle.isEnabled(context) }
+            DropdownMenuItem(
+                text = { Text(if (bigCards) "強制大卡片首頁：開" else "強制大卡片首頁：關") },
+                leadingIcon = { Icon(Icons.Outlined.ViewCarousel, contentDescription = null) },
+                onClick = {
+                    open = false
+                    HomeLayoutToggle.toggle(context)
+                },
+            )
         }
     }
     if (about) AboutDialog(versionLabel, onOpenGitHub = actions.onOpenGitHub, onDismiss = { about = false })
@@ -212,6 +226,14 @@ private fun AboutDialog(versionLabel: String, onOpenGitHub: () -> Unit, onDismis
                 )
                 Text(
                     "Made by hxfuxyy. Released under the ZetaCard Source License 2.0.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                )
+                // [ZetaCardNext] 授權條款 2、3：標示為修改版、註明原作者，且不代表原作者背書
+                Text(
+                    "ZetaCardNext is an unofficial modified version based on ZetaCard by hxfuxyy " +
+                        "(github.com/hxfuxyy/ZetaCard). Changes by Jas0n1ee0315; not endorsed by hxfuxyy.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,

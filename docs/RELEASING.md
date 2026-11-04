@@ -75,6 +75,8 @@ The [Xposed Modules Repository](https://modules.lsposed.org/submission) requires
 2. Set that repository's description to `ZetaCard` and copy the README text into its `README.md`.
 3. Create a fine-grained personal access token with **Contents: read and write** on that repository only, and add it to this repository as the secret `XPOSED_REPO_TOKEN`.
 
+> **ZetaCardNext:** this fork does not publish to the Xposed Modules Repository. `publish-xposed.yml` has been removed, and the section below only describes the original ZetaCard project.
+
 After every stable release, the release workflow starts **Publish to Xposed Modules Repository** (`publish-xposed.yml`). It downloads the APK already attached to the GitHub Release, checks it against the published SHA-256 file, and creates the release `<versionCode>-<versionName>` (for example `150-1.5`) in the module repository. If that step fails or the token was missing, add or fix the secret and run the workflow manually from **Actions** with the release tag, such as `v1.5`. It never rebuilds the APK and skips work that is already done.
 
 ## Publishing a release

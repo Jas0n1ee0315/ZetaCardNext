@@ -54,6 +54,8 @@ public final class WalletHook extends XposedModule {
     private static final int STOCK_HEIGHT = 440;
 
     private final Set<Method> installed = ConcurrentHashMap.newKeySet();
+    /** [ZetaCardNext] 已安裝卡片偵測 hook 的建構子，避免重複 hook */
+    private final Set<java.lang.reflect.Constructor<?>> discoveryConstructors = ConcurrentHashMap.newKeySet();
     private final Set<Class<?>> drawInstalled = ConcurrentHashMap.newKeySet();
     private final Map<Drawable, BitmapDrawable> replacements = Collections.synchronizedMap(new WeakHashMap<>());
     private final Map<Drawable, String> cardIds = Collections.synchronizedMap(new WeakHashMap<>());
@@ -111,6 +113,8 @@ public final class WalletHook extends XposedModule {
             seedFromRegistry(context);
             preloadArtwork();
             installDiskCacheHook(context);
+            // [ZetaCardNext] 依 ZetaCard 選單設定，強制 FeliCa 手機也使用大卡片首頁
+            HomeLayoutOverride.install(this, context, version, this::event, this::warn);
             if (restoreFromCache(context, loader, version)) return;
             SharedPreferences cache = context.getSharedPreferences(HOOK_CACHE, Context.MODE_PRIVATE);
             if (isKnownUnsupported(cache, version)) {
@@ -363,31 +367,51 @@ public final class WalletHook extends XposedModule {
                 " renderer(s) from " + layouts.size() + " equal layout(s)");
     }
 
+    /**
+     * 卡片偵測 hook。
+     *
+     * <p>[ZetaCardNext 修改] 上游版本 hook 的是「以卡片狀態為第一個參數」的單一建構子（finder 找到的
+     * {@code constructor}），但新版 Wallet 只在少數路徑建立該物件，首頁卡片從未經過，導致 App 一直顯示
+     * 「No cards found yet」。改為 hook 卡片狀態類別本身（{@code layout.cardArt} 所屬類別）的所有建構子，
+     * 等建構子執行完（{@code chain.proceed()}）後再從 {@code this} 讀出卡面 URL。
+     *
+     * @param constructor finder 找到的建構子；僅保留參數以維持呼叫端不變，實際 hook 目標是卡片狀態類別的建構子
+     */
     private boolean installDiscoveryHook(Context context, java.lang.reflect.Constructor<?> constructor,
             List<ComposeLayoutFinder.Layout> layouts) {
         try {
-            hook(constructor).setExceptionMode(XposedInterface.ExceptionMode.PROTECTIVE)
-                    .setId("zetacard-compose-discover-" + constructor.getDeclaringClass().getName())
-                    .intercept(chain -> {
-                        try {
-                            Object state = chain.getArgs().get(0);
-                            for (ComposeLayoutFinder.Layout layout : layouts) {
-                                if (!layout.cardArt.getDeclaringClass().isInstance(state)) continue;
-                                Object art = layout.cardArt.get(state);
-                                if (loggedOnce.add("compose-state")) {
-                                    event("Card state artwork model: " + (art == null ? "none" : art.getClass().getName()));
+            Class<?> stateClass = layouts.get(0).cardArt.getDeclaringClass();
+            int hooked = 0;
+            for (java.lang.reflect.Constructor<?> target : stateClass.getDeclaredConstructors()) {
+                // 同一個卡片狀態類別可能對應多個 layout，避免重複 hook 同一個建構子
+                if (!discoveryConstructors.add(target)) continue;
+                hook(target).setExceptionMode(XposedInterface.ExceptionMode.PROTECTIVE)
+                        .setId("zetacard-compose-discover-ctor-" + stateClass.getName() + "-" + hooked)
+                        .intercept(chain -> {
+                            // 先讓建構子跑完，欄位才有值
+                            Object result = chain.proceed();
+                            try {
+                                Object state = chain.getThisObject();
+                                for (ComposeLayoutFinder.Layout layout : layouts) {
+                                    if (!layout.cardArt.getDeclaringClass().isInstance(state)) continue;
+                                    Object art = layout.cardArt.get(state);
+                                    if (loggedOnce.add("compose-state")) {
+                                        event("Card state artwork model: " + (art == null ? "none" : art.getClass().getName()));
+                                    }
+                                    if (layout.urlModel.isInstance(art)) {
+                                        discoverComposeCard(context, (String) layout.url.get(art));
+                                        break;
+                                    }
                                 }
-                                if (layout.urlModel.isInstance(art)) {
-                                    discoverComposeCard(context, (String) layout.url.get(art));
-                                    break;
-                                }
+                            } catch (Throwable error) {
+                                warn("compose-discover", "Compose card discovery skipped", error);
                             }
-                        } catch (Throwable error) {
-                            warn("compose-discover", "Compose card discovery skipped", error);
-                        }
-                        return chain.proceed();
-                    });
-            return true;
+                            return result;
+                        });
+                hooked++;
+            }
+            event("Card discovery hooked on " + hooked + " constructor(s) of " + stateClass.getName());
+            return !discoveryConstructors.isEmpty();
         } catch (Throwable error) {
             warn("compose-install-discover", "Compose card discovery hook unavailable", error);
             return false;
