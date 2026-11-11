@@ -5,6 +5,7 @@ import android.content.SharedPreferences;
 import android.os.Handler;
 import android.os.Looper;
 import android.widget.Toast;
+import io.github.hxfuxyy.zetacard.R;
 import io.github.hxfuxyy.zetacard.ZetaApplication;
 import io.github.hxfuxyy.zetacard.core.HomeLayoutSetting;
 import io.github.hxfuxyy.zetacard.logging.DiagnosticsLog;
@@ -43,13 +44,14 @@ public final class HomeLayoutToggle {
     private static String apply(Context context) {
         try {
             XposedService service = ZetaApplication.currentService();
-            if (service == null) return "LSPosed 服務未連線，無法切換首頁樣式";
+            // 訊息皆使用字串資源，跟隨 App 語言（1.6 起支援 18 種語言）
+            if (service == null) return context.getString(R.string.big_cards_failed);
 
             boolean enabled = !isEnabled(context);
             boolean saved = service.getRemotePreferences(HomeLayoutSetting.REMOTE_GROUP).edit()
                     .putBoolean(HomeLayoutSetting.KEY_BIG_CARDS, enabled)
                     .commit();
-            if (!saved) return "無法寫入 LSPosed 設定，切換失敗";
+            if (!saved) return context.getString(R.string.big_cards_failed);
             prefs(context).edit().putBoolean(HomeLayoutSetting.KEY_BIG_CARDS, enabled).commit();
             DiagnosticsLog.info(context, enabled
                     ? "Home layout override enabled (big cards)"
@@ -57,12 +59,14 @@ public final class HomeLayoutToggle {
 
             // 必須用 force-stop：RootBridge.restartWallet 的 kill -9 會讓 Android 以 savedInstanceState
             // 還原舊的首頁 Fragment，新設定不會生效
-            boolean stopped = RootShell.run("am force-stop " + RootBridge.WALLET_PACKAGE) != null;
-            String state = enabled ? "已開啟大卡片首頁" : "已關閉大卡片首頁";
-            return state + (stopped ? "，重新開啟 Wallet 即生效" : "，請手動關閉並重開 Wallet");
+            // force-stop 失敗時（例如 root 被拒）使用者重開 Wallet 前需自行關閉，訊息中的「重新開啟」仍適用
+            if (RootShell.run("am force-stop " + RootBridge.WALLET_PACKAGE) == null) {
+                DiagnosticsLog.warning(context, "Home layout toggle: could not force-stop Wallet");
+            }
+            return context.getString(enabled ? R.string.big_cards_enabled : R.string.big_cards_disabled);
         } catch (Throwable error) {
             DiagnosticsLog.warning(context, "Home layout toggle failed: " + error.getClass().getSimpleName());
-            return "切換首頁樣式失敗";
+            return context.getString(R.string.big_cards_failed);
         }
     }
 
