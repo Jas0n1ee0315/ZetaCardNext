@@ -20,13 +20,23 @@ import java.lang.reflect.Method;
  * 其中 isFelicaDevice 會在裝有おサイフケータイ（{@code com.felicanetworks.mfc}）或 device_country=JP
  * 時成立，所以日本版 Pixel 預設停在列表首頁。
  *
+ * <p>從 26.44.1009480308 起，總開關 45805255 已全面上線並從程式中移除，邏輯變成：
+ * <pre>
+ * if (isFelicaDevice && !旗標 45777533) → 列表首頁
+ * else if (旗標 45864357)               → 大卡片首頁（新版元件）
+ * else                                  → 大卡片首頁（舊版元件）
+ * </pre>
+ * 所以新版只需要強制 45777533；45864357 只是在兩種大卡片實作間切換，不需要動。
+ *
  * <h2>做法</h2>
- * Hook 讀取這兩個伺服器旗標的方法，一律回傳 true。旗標類別與方法名稱經過混淆、每個 Wallet 版本都可能不同，
+ * Hook 讀取這些伺服器旗標的方法，一律回傳 true。旗標類別與方法名稱經過混淆、每個 Wallet 版本都可能不同，
  * 因此只對 {@link #TARGETS} 列出、已驗證過的版本生效；其他版本會跳過並寫 log，不會誤 hook。
  *
  * <h2>支援新版 Wallet</h2>
- * 用 apktool 反組譯新版 Wallet，搜尋 {@code const-string "45777533"} 與 {@code "45805255"}，
+ * 反組譯新版 Wallet（例如 build-tools 內的 {@code dexdump -d classes*.dex}），搜尋
+ * {@code const-string "45777533"}（以及若仍存在的 {@code "45805255"}），
  * 找到所在類別（實作旗標介面的 final class）與對應的 {@code ()Z} 方法名稱，加入 {@link #TARGETS}。
+ * 若 45777533 也消失，請重新檢查 {@code WalletFragmentFactory.createFragment} 的判斷式。
  */
 final class HomeLayoutOverride {
     /** 記錄一般事件（對應 WalletHook.event） */
@@ -43,20 +53,25 @@ final class HomeLayoutOverride {
     private static final class Target {
         final long versionCode;
         final String flagClass;
-        /** 依序為旗標 45805255、45777533 的讀取方法 */
+        /** 被強制為 true 的旗標編號，只用於 log */
+        final String flagIds;
+        /** 要強制回傳 true 的旗標讀取方法（皆為無參數、回傳 boolean） */
         final String[] flagMethods;
 
-        Target(long versionCode, String flagClass, String... flagMethods) {
+        Target(long versionCode, String flagClass, String flagIds, String... flagMethods) {
             this.versionCode = versionCode;
             this.flagClass = flagClass;
+            this.flagIds = flagIds;
             this.flagMethods = flagMethods;
         }
     }
 
     /** 已驗證的 Wallet 版本 */
     private static final Target[] TARGETS = {
-            // Google Wallet 26.43.1009867093
-            new Target(934004749L, "brfp", "x", "p"),
+            // Google Wallet 26.43.1009867093：x() = 45805255、p() = 45777533
+            new Target(934004749L, "brfp", "45805255, 45777533", "x", "p"),
+            // Google Wallet 26.44.1009480308：45805255 已移除，o() = 45777533
+            new Target(934023188L, "brqm", "45777533", "o"),
     };
 
     private HomeLayoutOverride() {
@@ -96,7 +111,7 @@ final class HomeLayoutOverride {
                         .setId("zetacard-home-" + target.flagClass + "." + name)
                         .intercept(chain -> Boolean.TRUE);
             }
-            events.event("Home layout forced to card carousel (flags 45805255, 45777533)");
+            events.event("Home layout forced to card carousel (flags " + target.flagIds + ")");
         } catch (Throwable error) {
             warnings.warn("home-layout", "Home layout override unavailable", error);
         }
