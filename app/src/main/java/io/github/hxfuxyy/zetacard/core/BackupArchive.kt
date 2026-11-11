@@ -17,6 +17,8 @@ object BackupArchive {
         val staged = LinkedHashMap<String, File>()
         var total = 0L
         var entries = 0
+        // [ZetaCardNext] 解壓目標目錄的正規路徑，用於防止 Zip Slip（見下方 containment 檢查）
+        val root = directory.canonicalFile
         ZipInputStream(input.buffered()).use { zip ->
             while (true) {
                 val entry = zip.nextEntry ?: break
@@ -34,7 +36,12 @@ object BackupArchive {
                         size
                     }
                     id != null -> {
-                        val target = File(directory, "$id.png")
+                        // id 已由 CardIds.isValid 限定為 64 位十六進位字元，不可能含 ".." 或 "/"；
+                        // 這裡再以正規路徑確認檔案一定落在暫存目錄內（縱深防禦，也讓 CodeQL 能辨識）
+                        val target = File(root, "$id.png").canonicalFile
+                        if (target.parentFile != root || !target.path.startsWith(root.path + File.separator)) {
+                            throw InvalidBackupException("Backup entry is outside the backup")
+                        }
                         val size = target.outputStream().use { copyLimited(zip, it, BackupManifest.MAX_ART_BYTES) }
                         if (!isImage(target)) throw InvalidBackupException("Backup contains an invalid image")
                         staged[id] = target
