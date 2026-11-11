@@ -37,8 +37,10 @@ import androidx.compose.ui.unit.dp
 import io.github.hxfuxyy.zetacard.R
 
 const val REPOSITORY_URL = "https://github.com/hxfuxyy/ZetaCard"
+
 /** [ZetaCardNext] 修改版的倉庫：發行版、問題回報與原始碼都指向這裡 */
 const val FORK_URL = "https://github.com/Jas0n1ee0315/ZetaCardNext"
+
 const val AUTHOR = "hxfuxyy"
 const val AUTHOR_URL = "https://github.com/hxfuxyy"
 
