@@ -4,6 +4,12 @@ All notable changes to ZetaCard are documented in this file. The format is based
 
 ## [Unreleased]
 
+## [1.5.2-next] - ZetaCardNext
+
+### Fixed
+
+- **強制大卡片首頁** stopped working after Google Wallet updated to 26.44.1009480308, because the override only applied to the Wallet version it was verified on. Wallet 26.44 removed flag `45805255` (now always on), so on this version the override forces only flag `45777533`.
+
 ## [1.5.1-next] - ZetaCardNext
 
 Unofficial modified version based on ZetaCard 1.5 by hxfuxyy.
